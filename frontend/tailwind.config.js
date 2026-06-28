@@ -1,5 +1,8 @@
 export default {
-    content: ["./index.html", "./src/**/*.{ts,tsx}"],
+    content: {
+        relative: true,
+        files: ["./index.html", "./src/**/*.{ts,tsx}"],
+    },
     theme: {
         extend: {
             fontFamily: {

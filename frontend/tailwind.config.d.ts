@@ -1,5 +1,8 @@
 declare const _default: {
-    content: string[];
+    content: {
+        relative: true;
+        files: string[];
+    };
     theme: {
         extend: {
             fontFamily: {

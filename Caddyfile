@@ -1,0 +1,18 @@
+{
+	# Set this in production, for example:
+	# DOMAIN=organidm.example.com
+}
+
+{$DOMAIN:localhost} {
+	encode gzip zstd
+
+	handle /api* {
+		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8000}
+	}
+
+	handle {
+		root * {$FRONTEND_DIST:./frontend/dist}
+		try_files {path} /index.html
+		file_server
+	}
+}

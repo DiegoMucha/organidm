@@ -30,4 +30,20 @@ export type CalendarEvent = {
   updatedAt: string;
 };
 
+export type ResearchPaper = {
+  id: string;
+  title: string;
+  authors: string;
+  venue: string;
+  year: string;
+  abstract: string;
+  paperUrl: string;
+  reviewUrl: string;
+  implementationUrl: string;
+  trainingRepoUrl: string;
+  conclusion: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type DateFilter = "all" | "today" | "tomorrow" | "custom";
