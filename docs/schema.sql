@@ -2,6 +2,7 @@ CREATE TABLE task_groups (
   id varchar(64) PRIMARY KEY,
   name text NOT NULL,
   icon_placeholder text NOT NULL,
+  color text NOT NULL DEFAULT '#2563eb',
   created_at timestamp NOT NULL
 );
 
@@ -55,6 +56,3 @@ CREATE INDEX idx_tasks_completed ON tasks(completed);
 CREATE INDEX idx_calendar_events_task_group_id ON calendar_events(task_group_id);
 CREATE INDEX idx_calendar_events_event_date ON calendar_events(event_date);
 CREATE INDEX idx_research_papers_updated_at ON research_papers(updated_at);
-
-INSERT INTO task_groups (id, name, icon_placeholder)
-VALUES ('group-inbox', 'Inbox', 'inbox');

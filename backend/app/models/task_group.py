@@ -9,5 +9,7 @@ class TaskGroup(SQLModel, table=True):
     task_group_id: int | None = Field(default=None, primary_key=True)
     name: str
     description: str | None = None
+    icon_placeholder: str = "inbox"
+    color: str = "#2563eb"
     created_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))

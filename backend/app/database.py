@@ -32,6 +32,22 @@ def add_missing_columns():
                 """
             )
         )
+        connection.execute(
+            text(
+                """
+                ALTER TABLE task_groups
+                ADD COLUMN IF NOT EXISTS icon_placeholder TEXT NOT NULL DEFAULT 'inbox'
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                ALTER TABLE task_groups
+                ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT '#2563eb'
+                """
+            )
+        )
 
 def get_session():
     with Session(engine) as session:

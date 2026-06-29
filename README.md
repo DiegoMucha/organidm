@@ -1,4 +1,4 @@
-# Personal Manager
+# OrganiDM
 
 Vite React frontend with a separate backend folder reserved for the FastAPI API.
 
