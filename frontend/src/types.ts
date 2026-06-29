@@ -2,6 +2,7 @@ export type TaskGroup = {
   id: string;
   name: string;
   iconPlaceholder: string;
+  color?: string;
   createdAt: string;
 };
 

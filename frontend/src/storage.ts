@@ -1,9 +1,5 @@
 import type { CalendarEvent, ResearchPaper, Task, TaskGroup } from "./types";
-
-const TASKS_KEY = "personal-manager.tasks";
-const TASK_GROUPS_KEY = "personal-manager.task-groups";
-const EVENTS_KEY = "personal-manager.events";
-const RESEARCH_PAPERS_KEY = "personal-manager.research-papers";
+import { defaultGroupColor, normalizeGroupColor } from "./utils/groupColors";
 
 export type AppData = {
   tasks: Task[];
@@ -18,6 +14,8 @@ type ApiTaskGroup = {
   task_group_id: number;
   name: string;
   description: string | null;
+  icon_placeholder?: string | null;
+  color?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -45,47 +43,15 @@ type ApiEvent = {
   created_at: string;
 };
 
-export function defaultTaskGroups(): TaskGroup[] {
-  return [
-    {
-      id: "group-inbox",
-      name: "Inbox",
-      iconPlaceholder: "inbox",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-}
-
-export function loadLocalData(): AppData {
-  return {
-    tasks: loadTasks(),
-    taskGroups: loadTaskGroups(),
-    events: loadEvents(),
-    researchPapers: loadResearchPapers(),
-  };
-}
-
-export function saveLocalData(data: AppData) {
-  saveTasks(data.tasks);
-  saveTaskGroups(data.taskGroups);
-  saveEvents(data.events);
-  saveResearchPapers(data.researchPapers);
-}
-
 export async function loadRemoteData(): Promise<AppData> {
-  const localData = loadLocalData();
-  const [tasks, taskGroups, events] = await Promise.all([getTasks(), getTaskGroups(localData.taskGroups), getEvents()]);
+  const [tasks, taskGroups, events] = await Promise.all([getTasks(), getTaskGroups(), getEvents()]);
 
   return {
     tasks,
-    taskGroups: taskGroups.length ? taskGroups : defaultTaskGroups(),
+    taskGroups,
     events,
-    researchPapers: localData.researchPapers,
+    researchPapers: [],
   };
-}
-
-export async function saveRemoteData(data: AppData): Promise<AppData> {
-  return data;
 }
 
 export async function getTasks(): Promise<Task[]> {
@@ -153,32 +119,36 @@ export async function deleteRemoteTask(taskId: string) {
   });
 }
 
-export async function getTaskGroups(localGroups: TaskGroup[] = []): Promise<TaskGroup[]> {
+export async function getTaskGroups(): Promise<TaskGroup[]> {
   const groups = await apiRequest<ApiTaskGroup[]>("/api/task_groups/");
-  return groups.map((group) => fromApiTaskGroup(group, localGroups));
+  return groups.map((group) => fromApiTaskGroup(group));
 }
 
-export async function createRemoteTaskGroup(name: string, iconPlaceholder: string): Promise<TaskGroup> {
+export async function createRemoteTaskGroup(name: string, iconPlaceholder: string, color: string): Promise<TaskGroup> {
   const group = await apiRequest<ApiTaskGroup>("/api/task_groups/", {
     method: "POST",
     body: JSON.stringify({
       name,
-      description: null,
+      description: "",
+      icon_placeholder: iconPlaceholder,
+      color: normalizeGroupColor(color),
     }),
   });
 
-  return fromApiTaskGroup(group, [], iconPlaceholder);
+  return fromApiTaskGroup(group, iconPlaceholder, color);
 }
 
-export async function updateRemoteTaskGroup(groupId: string, name: string, iconPlaceholder: string): Promise<TaskGroup> {
+export async function updateRemoteTaskGroup(groupId: string, name: string, iconPlaceholder: string, color: string): Promise<TaskGroup> {
   const group = await apiRequest<ApiTaskGroup>(`/api/task_groups/${groupId}`, {
     method: "PATCH",
     body: JSON.stringify({
       name,
+      icon_placeholder: iconPlaceholder,
+      color: normalizeGroupColor(color),
     }),
   });
 
-  return fromApiTaskGroup(group, [], iconPlaceholder);
+  return fromApiTaskGroup(group, iconPlaceholder, color);
 }
 
 export async function deleteRemoteTaskGroup(groupId: string) {
@@ -216,56 +186,6 @@ export async function deleteRemoteEvent(eventId: string) {
   });
 }
 
-export function hasUserData(data: AppData) {
-  return (
-    data.tasks.length > 0 ||
-    data.events.length > 0 ||
-    data.researchPapers.length > 0 ||
-    data.taskGroups.some((group) => group.id !== "group-inbox")
-  );
-}
-
-export function loadTasks(): Task[] {
-  return loadFromStorage<Task[]>(TASKS_KEY, []);
-}
-
-export function saveTasks(tasks: Task[]) {
-  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-}
-
-export function loadTaskGroups(): TaskGroup[] {
-  return loadFromStorage<TaskGroup[]>(TASK_GROUPS_KEY, defaultTaskGroups());
-}
-
-export function saveTaskGroups(groups: TaskGroup[]) {
-  localStorage.setItem(TASK_GROUPS_KEY, JSON.stringify(groups));
-}
-
-export function loadEvents(): CalendarEvent[] {
-  return loadFromStorage<CalendarEvent[]>(EVENTS_KEY, []);
-}
-
-export function saveEvents(events: CalendarEvent[]) {
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-}
-
-export function loadResearchPapers(): ResearchPaper[] {
-  return loadFromStorage<ResearchPaper[]>(RESEARCH_PAPERS_KEY, []);
-}
-
-export function saveResearchPapers(papers: ResearchPaper[]) {
-  localStorage.setItem(RESEARCH_PAPERS_KEY, JSON.stringify(papers));
-}
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? (JSON.parse(stored) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 async function apiRequest<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -297,14 +217,18 @@ function fromApiTask(task: ApiTask): Task {
   };
 }
 
-function fromApiTaskGroup(group: ApiTaskGroup, localGroups: TaskGroup[] = [], iconPlaceholder = "inbox"): TaskGroup {
+function fromApiTaskGroup(
+  group: ApiTaskGroup,
+  iconPlaceholder = "inbox",
+  color = defaultGroupColor,
+): TaskGroup {
   const id = String(group.task_group_id);
-  const localGroup = localGroups.find((currentGroup) => currentGroup.id === id);
 
   return {
     id,
     name: group.name,
-    iconPlaceholder: localGroup?.iconPlaceholder ?? iconPlaceholder,
+    iconPlaceholder: group.icon_placeholder ?? iconPlaceholder,
+    color: normalizeGroupColor(group.color ?? color),
     createdAt: group.created_at,
   };
 }

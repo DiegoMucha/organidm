@@ -32,9 +32,7 @@ import {
   deleteRemoteEvent,
   deleteRemoteTask,
   deleteRemoteTaskGroup,
-  loadLocalData,
   loadRemoteData,
-  saveLocalData,
   updateRemoteEvent,
   updateRemoteTask,
   updateRemoteTaskGroup,
@@ -590,12 +588,11 @@ function StudiesInterface({
 }
 
 function App() {
-  const [tasks, setTasks] = useState<Task[]>(() => loadLocalData().tasks);
-  const [taskGroups, setTaskGroups] = useState<TaskGroup[]>(() => loadLocalData().taskGroups);
-  const [events, setEvents] = useState<CalendarEvent[]>(() => loadLocalData().events);
-  const [researchPapers, setResearchPapers] = useState<ResearchPaper[]>(() => loadLocalData().researchPapers);
-  const [hasLoadedRemoteData, setHasLoadedRemoteData] = useState(false);
-  const [storageStatus, setStorageStatus] = useState<"connecting" | "remote" | "local">("connecting");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [researchPapers, setResearchPapers] = useState<ResearchPaper[]>([]);
+  const [backendError, setBackendError] = useState("");
   const [activeSubprogram, setActiveSubprogram] = useState<SubprogramId>("calendar");
   const [isSubprogramMenuOpen, setIsSubprogramMenuOpen] = useState(false);
   const [activeInterface, setActiveInterface] = useState<MainInterface>("tasks");
@@ -618,8 +615,6 @@ function App() {
     let isMounted = true;
 
     async function hydrateData() {
-      const localData = loadLocalData();
-
       try {
         const data = await loadRemoteData();
 
@@ -631,14 +626,11 @@ function App() {
         setTaskGroups(data.taskGroups);
         setEvents(data.events);
         setResearchPapers(data.researchPapers);
-        saveLocalData(data);
-        setStorageStatus("remote");
+        setBackendError("");
       } catch (error) {
         console.error(error);
-        setStorageStatus("local");
-      } finally {
         if (isMounted) {
-          setHasLoadedRemoteData(true);
+          setBackendError("Backend is failing. Please try again.");
         }
       }
     }
@@ -650,14 +642,14 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hasLoadedRemoteData) {
-      return;
-    }
+  function reportBackendFailure(error: unknown) {
+    console.error(error);
+    setBackendError("Backend is failing. Please try again.");
+  }
 
-    const data = { tasks, taskGroups, events, researchPapers };
-    saveLocalData(data);
-  }, [events, hasLoadedRemoteData, researchPapers, taskGroups, tasks]);
+  function clearBackendFailure() {
+    setBackendError("");
+  }
 
   const filteredTasks = useMemo(() => {
     return tasks
@@ -709,11 +701,10 @@ function App() {
       try {
         const updatedTask = await updateRemoteTask(editingTask.id, taskUpdate);
         setTasks((currentTasks) => currentTasks.map((task) => (task.id === editingTask.id ? updatedTask : task)));
-        setStorageStatus("remote");
+        clearBackendFailure();
         closeTaskModal();
       } catch (error) {
-        console.error(error);
-        setStorageStatus("local");
+        reportBackendFailure(error);
       }
       return;
     }
@@ -727,11 +718,10 @@ function App() {
         priority: values.priority || 3,
       });
       setTasks((currentTasks) => [createdTask, ...currentTasks]);
-      setStorageStatus("remote");
+      clearBackendFailure();
       closeTaskModal();
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
     }
   }
 
@@ -768,28 +758,26 @@ function App() {
     setIsCreatingGroup(false);
   }
 
-  async function handleGroupSubmit(name: string, iconPlaceholder: string) {
+  async function handleGroupSubmit(name: string, iconPlaceholder: string, color: string) {
     if (editingGroup) {
       try {
-        const updatedGroup = await updateRemoteTaskGroup(editingGroup.id, name, iconPlaceholder);
+        const updatedGroup = await updateRemoteTaskGroup(editingGroup.id, name, iconPlaceholder, color);
         setTaskGroups((groups) => groups.map((group) => (group.id === editingGroup.id ? updatedGroup : group)));
-        setStorageStatus("remote");
+        clearBackendFailure();
         closeGroupModal();
       } catch (error) {
-        console.error(error);
-        setStorageStatus("local");
+        reportBackendFailure(error);
       }
       return;
     }
 
     try {
-      const createdGroup = await createRemoteTaskGroup(name, iconPlaceholder);
+      const createdGroup = await createRemoteTaskGroup(name, iconPlaceholder, color);
       setTaskGroups((groups) => [...groups, createdGroup]);
-      setStorageStatus("remote");
+      clearBackendFailure();
       closeGroupModal();
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
     }
   }
 
@@ -797,13 +785,12 @@ function App() {
     try {
       await deleteRemoteTask(taskId);
       setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId));
-      setStorageStatus("remote");
+      clearBackendFailure();
       if (editingTask?.id === taskId) {
         closeTaskModal();
       }
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
     }
   }
 
@@ -823,10 +810,9 @@ function App() {
         completedAt: completed ? now : undefined,
       });
       setTasks((currentTasks) => currentTasks.map((currentTask) => (currentTask.id === taskId ? updatedTask : currentTask)));
-      setStorageStatus("remote");
+      clearBackendFailure();
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
     }
   }
 
@@ -847,11 +833,10 @@ function App() {
       try {
         const updatedEvent = await updateRemoteEvent(editingEvent.id, eventUpdate);
         setEvents((currentEvents) => currentEvents.map((event) => (event.id === editingEvent.id ? updatedEvent : event)));
-        setStorageStatus("remote");
+        clearBackendFailure();
         closeEventModal();
       } catch (error) {
-        console.error(error);
-        setStorageStatus("local");
+        reportBackendFailure(error);
       }
       return;
     }
@@ -866,11 +851,10 @@ function App() {
         endTime: values.endTime,
       });
       setEvents((currentEvents) => [createdEvent, ...currentEvents]);
-      setStorageStatus("remote");
+      clearBackendFailure();
       closeEventModal();
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
     }
   }
 
@@ -898,13 +882,12 @@ function App() {
     try {
       await deleteRemoteEvent(eventId);
       setEvents((currentEvents) => currentEvents.filter((event) => event.id !== eventId));
-      setStorageStatus("remote");
+      clearBackendFailure();
       if (editingEvent?.id === eventId) {
         closeEventModal();
       }
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
     }
   }
 
@@ -951,10 +934,9 @@ function App() {
             : event,
         ),
       );
-      setStorageStatus("remote");
+      clearBackendFailure();
     } catch (error) {
-      console.error(error);
-      setStorageStatus("local");
+      reportBackendFailure(error);
       return;
     }
 
@@ -1043,24 +1025,14 @@ function App() {
               type="button"
               onClick={() => setIsSubprogramMenuOpen(true)}
               className="grid h-10 w-10 place-items-center rounded-full border border-theme-border bg-theme-surface text-[var(--program-accent-strong)] transition hover:border-[var(--program-accent)] hover:bg-[var(--program-accent-muted)]"
-              aria-label="Open personal manager subprograms"
+              aria-label="Open OrganiDM subprograms"
             >
               <Sparkles size={22} />
             </button>
             <div>
-              <h1 className="text-xl font-semibold tracking-normal">Personal Manager</h1>
+              <h1 className="text-xl font-semibold tracking-normal">OrganiDM</h1>
               <p className="text-sm text-theme-text-muted">{activeSubprogramConfig.name}</p>
             </div>
-            <span
-              className={`hidden rounded-full border px-3 py-1 text-xs font-medium sm:inline-flex ${
-                storageStatus === "remote"
-                  ? "border-theme-border-strong bg-theme-accent-muted text-theme-accent-strong"
-                  : "border-theme-border bg-theme-surface text-theme-text-muted"
-              }`}
-              title={storageStatus === "remote" ? "Saving to backend API" : "Using local cache until the API is available"}
-            >
-              {storageStatus === "remote" ? "API synced" : storageStatus === "connecting" ? "Connecting" : "Local cache"}
-            </span>
           </div>
           {activeSubprogram === "calendar" ? (
             <nav className="grid grid-cols-3 gap-1 rounded-2xl border border-theme-border bg-theme-surface p-1 sm:flex sm:items-center">
@@ -1127,6 +1099,20 @@ function App() {
         </div>
       </header>
 
+      {backendError ? (
+        <div className="fixed right-4 top-24 z-50 flex max-w-sm items-center gap-3 rounded-xl border border-theme-danger/40 bg-theme-surface-raised px-4 py-3 text-sm text-theme-text shadow-card">
+          <span className="min-w-0 flex-1">{backendError}</span>
+          <button
+            type="button"
+            onClick={() => setBackendError("")}
+            className="rounded-full p-1 text-theme-text-muted hover:bg-theme-surface hover:text-theme-text"
+            aria-label="Dismiss backend error"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      ) : null}
+
       {activeSubprogram === "calendar" && activeInterface === "tasks" ? (
         <div className="grid h-[calc(100vh-89px)] w-full items-stretch gap-5 overflow-hidden px-4 py-6 sm:px-6 md:h-[calc(100vh-73px)] lg:grid-cols-[300px_minmax(0,1fr)] lg:px-8">
           <Sidebar
@@ -1156,9 +1142,6 @@ function App() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-theme-border bg-theme-background px-3 py-1 text-sm text-theme-text-muted">
-                    {dateFilter === "all" ? "All dates" : dateFilter}
-                  </span>
                   <button
                     type="button"
                     onClick={() => openCreateTask()}
@@ -1224,7 +1207,7 @@ function App() {
             <div className="flex items-center justify-between gap-3 border-b border-theme-border px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-theme-text">Subprograms</h2>
-                <p className="text-sm text-theme-text-muted">Choose a Personal Manager workspace.</p>
+                <p className="text-sm text-theme-text-muted">Choose an OrganiDM workspace.</p>
               </div>
               <button
                 type="button"

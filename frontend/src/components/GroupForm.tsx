@@ -2,11 +2,12 @@ import { Check, Plus } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import type { TaskGroup } from "../types";
+import { groupColors, normalizeGroupColor } from "../utils/groupColors";
 import { defaultGroupIcon, groupIcons, type GroupIconKey } from "../utils/groupIcons";
 
 type GroupFormProps = {
   editingGroup?: TaskGroup | null;
-  onSubmit: (name: string, iconPlaceholder: string) => void;
+  onSubmit: (name: string, iconPlaceholder: string, color: string) => void;
 };
 
 export function GroupForm({ editingGroup, onSubmit }: GroupFormProps) {
@@ -14,6 +15,7 @@ export function GroupForm({ editingGroup, onSubmit }: GroupFormProps) {
     ? (editingGroup?.iconPlaceholder as GroupIconKey)
     : defaultGroupIcon;
   const [selectedIcon, setSelectedIcon] = useState<GroupIconKey>(initialIcon);
+  const [selectedColor, setSelectedColor] = useState(() => normalizeGroupColor(editingGroup?.color));
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,7 +26,7 @@ export function GroupForm({ editingGroup, onSubmit }: GroupFormProps) {
       return;
     }
 
-    onSubmit(name, selectedIcon);
+    onSubmit(name, selectedIcon, selectedColor);
   }
 
   return (
@@ -63,6 +65,35 @@ export function GroupForm({ editingGroup, onSubmit }: GroupFormProps) {
                 title={label}
               >
                 <Icon size={18} />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-2">
+        <div>
+          <h3 className="text-sm font-medium text-theme-text-muted">Color</h3>
+          <p className="text-xs text-theme-text-dim">Choose a color for calendar events in this task list.</p>
+        </div>
+
+        <div className="grid grid-cols-8 gap-2 rounded-2xl border border-theme-border bg-theme-background p-2 sm:grid-cols-[repeat(16,minmax(0,1fr))]">
+          {groupColors.map((color) => {
+            const selected = selectedColor === color.value;
+
+            return (
+              <button
+                key={color.value}
+                type="button"
+                onClick={() => setSelectedColor(color.value)}
+                className={`grid aspect-square place-items-center rounded-xl border transition ${
+                  selected ? "border-theme-border-strong ring-2 ring-theme-accent-strong" : "border-theme-border hover:border-theme-border-strong"
+                }`}
+                style={{ backgroundColor: color.value }}
+                aria-label={color.label}
+                title={color.label}
+              >
+                {selected ? <Check size={16} className="text-white drop-shadow" /> : null}
               </button>
             );
           })}

@@ -2,6 +2,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Circle, Clock, Edit3, Trash2 }
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent, Task, TaskGroup } from "../types";
 import { datePart } from "../utils/date";
+import { defaultGroupColor, normalizeGroupColor, readableTextColor } from "../utils/groupColors";
 import { GroupIcon } from "../utils/groupIcons";
 
 type CalendarMode = "day" | "week" | "month";
@@ -171,6 +172,7 @@ export function CalendarInterface({
                 onChange={() => setIncludeNoGroup((current) => !current)}
                 className="accent-theme-accent"
               />
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: defaultGroupColor }} />
               No group
             </label>
 
@@ -185,6 +187,7 @@ export function CalendarInterface({
                   onChange={() => toggleGroup(group.id)}
                   className="accent-theme-accent"
                 />
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: normalizeGroupColor(group.color) }} />
                 <span className="grid h-6 w-6 place-items-center rounded-full border border-theme-border text-xs font-semibold">
                   <GroupIcon value={group.iconPlaceholder} />
                 </span>
@@ -255,7 +258,14 @@ export function CalendarInterface({
             />
           ) : null}
           {mode === "month" ? (
-            <MonthlyCalendar date={anchorDate} tasks={visibleTasks} groups={groups} onTaskMenu={openTaskMenu} />
+            <MonthlyCalendar
+              date={anchorDate}
+              tasks={visibleTasks}
+              events={visibleEvents}
+              groups={groups}
+              onTaskMenu={openTaskMenu}
+              onEventMenu={openEventMenu}
+            />
           ) : null}
         </div>
       </section>
@@ -656,13 +666,17 @@ function WeeklyCalendar({
 function MonthlyCalendar({
   date,
   tasks,
+  events,
   groups,
   onTaskMenu,
+  onEventMenu,
 }: {
   date: Date;
   tasks: Task[];
+  events: CalendarEvent[];
   groups: TaskGroup[];
   onTaskMenu: (task: Task, x: number, y: number) => void;
+  onEventMenu: (event: CalendarEvent, x: number, y: number) => void;
 }) {
   const weeks = weeksForMonth(date);
 
@@ -675,6 +689,7 @@ function MonthlyCalendar({
           const taskDate = datePart(task.dueDate);
           return taskDate >= startKey && taskDate <= endKey;
         });
+        const weekEvents = events.filter((event) => event.date >= startKey && event.date <= endKey);
 
         return (
           <div key={startKey} className="grid min-h-28 grid-cols-[130px_minmax(0,1fr)] border-b border-theme-border last:border-b-0">
@@ -685,18 +700,57 @@ function MonthlyCalendar({
               </p>
             </div>
             <div className="grid content-start gap-2 overflow-y-auto p-3">
-              {weekTasks.length ? (
-                weekTasks.map((task) => (
-                  <CalendarTaskPill key={task.id} task={task} groups={groups} onTaskMenu={onTaskMenu} />
-                ))
+              {weekEvents.length || weekTasks.length ? (
+                <>
+                  {weekEvents.map((event) => (
+                    <CalendarMonthEventPill key={event.id} event={event} groups={groups} onEventMenu={onEventMenu} />
+                  ))}
+                  {weekTasks.map((task) => (
+                    <CalendarTaskPill key={task.id} task={task} groups={groups} onTaskMenu={onTaskMenu} />
+                  ))}
+                </>
               ) : (
-                <p className="text-sm text-theme-text-dim">No tasks this week</p>
+                <p className="text-sm text-theme-text-dim">No tasks or events this week</p>
               )}
             </div>
           </div>
         );
       })}
     </div>
+  );
+}
+
+function CalendarMonthEventPill({
+  event,
+  groups,
+  onEventMenu,
+}: {
+  event: CalendarEvent;
+  groups: TaskGroup[];
+  onEventMenu: (event: CalendarEvent, x: number, y: number) => void;
+}) {
+  const group = groups.find((item) => item.id === event.taskGroupId);
+  const eventColor = normalizeGroupColor(group?.color);
+  const textColor = readableTextColor(eventColor);
+
+  return (
+    <button
+      type="button"
+      onClick={(mouseEvent) => {
+        mouseEvent.stopPropagation();
+        onEventMenu(event, mouseEvent.clientX, mouseEvent.clientY);
+      }}
+      className="flex items-center gap-2 rounded-xl border px-3 py-2 text-left shadow-subtle"
+      style={{
+        backgroundColor: eventColor,
+        borderColor: eventColor,
+        color: textColor,
+      }}
+    >
+      <Clock size={14} className="shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{event.name || "Event"}</span>
+      <span className="shrink-0 text-xs opacity-85">{shortDate(new Date(`${event.date}T00:00:00`))}</span>
+    </button>
   );
 }
 
@@ -758,13 +812,20 @@ function CalendarEventPill({
 }) {
   const group = groups.find((item) => item.id === event.taskGroupId);
   const name = event.name || "Event";
+  const eventColor = normalizeGroupColor(group?.color);
+  const textColor = readableTextColor(eventColor);
 
   return (
     <div
-      className={`absolute inset-x-1 top-1 z-10 rounded-xl border border-theme-accent/40 bg-theme-accent-muted shadow-subtle ${
+      className={`absolute inset-x-1 top-1 z-10 rounded-xl border shadow-subtle ${
         compact ? "px-2 py-1.5" : "px-3 py-2"
       }`}
-      style={{ height: `calc(${durationHours} * ${hourHeightRem}rem - 0.5rem)` }}
+      style={{
+        backgroundColor: eventColor,
+        borderColor: eventColor,
+        color: textColor,
+        height: `calc(${durationHours} * ${hourHeightRem}rem - 0.5rem)`,
+      }}
     >
       <button
         type="button"
@@ -776,11 +837,11 @@ function CalendarEventPill({
         }}
         className="flex h-full w-full items-start gap-2 overflow-hidden text-left"
       >
-        <Clock size={compact ? 13 : 15} className="mt-0.5 text-theme-accent-strong" />
+        <Clock size={compact ? 13 : 15} className="mt-0.5 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className={`truncate font-semibold text-theme-text ${compact ? "text-xs" : "text-sm"}`}>{name}</p>
+          <p className={`truncate font-semibold ${compact ? "text-xs" : "text-sm"}`}>{name}</p>
           {!compact ? (
-            <p className="mt-0.5 text-xs text-theme-text-muted">
+            <p className="mt-0.5 text-xs opacity-85">
               {timeRangeLabel(event.startTime, event.endTime)} · {group?.name ?? "No group"}
             </p>
           ) : null}

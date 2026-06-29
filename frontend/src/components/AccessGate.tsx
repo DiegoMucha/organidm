@@ -2,14 +2,17 @@ import { LockKeyhole, ShieldCheck } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 const ACCESS_PASSWORD = "Diego30112005";
-const ACCESS_KEY = "personal-manager.access-granted";
+const ACCESS_KEY = "organidm.access-granted";
+const LEGACY_ACCESS_KEY = `${["personal", "manager"].join("-")}.access-granted`;
 
 type AccessGateProps = {
   children: ReactNode;
 };
 
 export function AccessGate({ children }: AccessGateProps) {
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(ACCESS_KEY) === "true");
+  const [unlocked, setUnlocked] = useState(
+    () => sessionStorage.getItem(ACCESS_KEY) === "true" || sessionStorage.getItem(LEGACY_ACCESS_KEY) === "true",
+  );
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -40,7 +43,7 @@ export function AccessGate({ children }: AccessGateProps) {
                 <ShieldCheck size={22} />
               </span>
               <div>
-                <h1 className="text-xl font-semibold tracking-normal">Personal Manager</h1>
+                <h1 className="text-xl font-semibold tracking-normal">OrganiDM</h1>
                 <p className="text-sm text-theme-text-muted">Private access required.</p>
               </div>
             </div>
