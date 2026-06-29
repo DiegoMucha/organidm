@@ -37,5 +37,15 @@ services:
       timeout: 5s
       retries: 5
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: organidm-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: eyJhIjoiYWVhNTQyMWUwZjg1MGJkYTFjNmFmNmZkMGNhYWIzYmEiLCJ0IjoiMDhjNjRmOWQtNzI4OS00NjJlLWJmNGItNTNhYzdkZTIzOTQwIiwicyI6IlptWXdOVFE1T1RndE5UZzNaaTAwTkRnMkxUZzJZakl0T0RJMVkyTmhZalprTUdFMiJ9
+    depends_on:
+      - caddy
+
 volumes:
   postgres_data:
