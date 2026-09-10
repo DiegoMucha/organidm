@@ -171,7 +171,7 @@ export function TaskList({ tasks, groups, onToggleComplete, onEdit, onDelete }: 
                 {formatDueDate(task.dueDate)}
               </span>
               <span className="rounded-full border border-theme-border bg-theme-surface px-2.5 py-1 text-xs font-medium text-theme-text-muted">
-                Priority {task.priority ?? 3}
+                {task.priority === undefined ? "No priority" : `Priority ${task.priority}`}
               </span>
               {task.completed ? (
                 <span className="rounded-full border border-theme-border-strong bg-theme-accent-muted px-2.5 py-1 text-xs font-medium text-theme-accent-strong">

@@ -1,4 +1,4 @@
-  fastapi[all]
+fastapi[all]
 uvicorn
 sqlmodel
 psycopg[binary]

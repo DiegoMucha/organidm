@@ -16,16 +16,20 @@ export function datePart(value?: string) {
   return value.slice(0, 10);
 }
 
-export function toDateTimeInputValue(value?: string) {
+export function toDateInputValue(value?: string) {
   if (!value) {
     return "";
   }
 
-  if (value.length === 10) {
-    return `${value}T09:00`;
+  return value.slice(0, 10);
+}
+
+export function toTimeInputValue(value?: string) {
+  if (!value || !value.includes("T")) {
+    return "";
   }
 
-  return value.slice(0, 16);
+  return value.slice(11, 16);
 }
 
 export function formatDueDate(value?: string) {

@@ -9,7 +9,7 @@ export type TaskGroup = {
 export type Task = {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   taskGroupId?: string;
   dueDate?: string;
   priority?: number;
@@ -19,6 +19,8 @@ export type Task = {
   updatedAt: string;
 };
 
+export type EventRepeatType = "once" | "daily" | "weekdays" | "custom";
+
 export type CalendarEvent = {
   id: string;
   name: string;
@@ -27,6 +29,8 @@ export type CalendarEvent = {
   date: string;
   startTime: string;
   endTime: string;
+  repeatType: EventRepeatType;
+  repeatDays: number[];
   createdAt: string;
   updatedAt: string;
 };

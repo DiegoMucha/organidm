@@ -1,4 +1,4 @@
-import type { CalendarEvent, ResearchPaper, Task, TaskGroup } from "./types";
+import type { CalendarEvent, EventRepeatType, ResearchPaper, Task, TaskGroup } from "./types";
 import { defaultGroupColor, normalizeGroupColor } from "./utils/groupColors";
 
 export type AppData = {
@@ -40,6 +40,8 @@ type ApiEvent = {
   task_group_id: number | null;
   start_datetime: string;
   finish_datetime: string;
+  recurrence_type: EventRepeatType;
+  recurrence_days: number[];
   created_at: string;
 };
 
@@ -64,8 +66,8 @@ export async function createRemoteTask(task: Pick<Task, "name" | "description" |
     method: "POST",
     body: JSON.stringify({
       name: task.name,
-      description: task.description,
-      priority: task.priority,
+      description: task.description ?? null,
+      priority: task.priority ?? null,
       due_datetime: task.dueDate || null,
       task_group_id: toOptionalNumber(task.taskGroupId),
     }),
@@ -82,7 +84,7 @@ export async function updateRemoteTask(taskId: string, task: Partial<Task>): Pro
   }
 
   if ("description" in task) {
-    payload.description = task.description;
+    payload.description = task.description ?? null;
   }
 
   if ("completed" in task) {
@@ -94,7 +96,7 @@ export async function updateRemoteTask(taskId: string, task: Partial<Task>): Pro
   }
 
   if ("priority" in task) {
-    payload.priority = task.priority;
+    payload.priority = task.priority ?? null;
   }
 
   if ("dueDate" in task) {
@@ -162,7 +164,7 @@ export async function getEvents(): Promise<CalendarEvent[]> {
   return events.map(fromApiEvent);
 }
 
-export async function createRemoteEvent(event: Pick<CalendarEvent, "name" | "description" | "taskGroupId" | "date" | "startTime" | "endTime">): Promise<CalendarEvent> {
+export async function createRemoteEvent(event: Pick<CalendarEvent, "name" | "description" | "taskGroupId" | "date" | "startTime" | "endTime" | "repeatType" | "repeatDays">): Promise<CalendarEvent> {
   const createdEvent = await apiRequest<ApiEvent>("/api/events/", {
     method: "POST",
     body: JSON.stringify(toApiEventPayload(event)),
@@ -171,7 +173,7 @@ export async function createRemoteEvent(event: Pick<CalendarEvent, "name" | "des
   return fromApiEvent(createdEvent);
 }
 
-export async function updateRemoteEvent(eventId: string, event: Pick<CalendarEvent, "name" | "description" | "taskGroupId" | "date" | "startTime" | "endTime">): Promise<CalendarEvent> {
+export async function updateRemoteEvent(eventId: string, event: Pick<CalendarEvent, "name" | "description" | "taskGroupId" | "date" | "startTime" | "endTime" | "repeatType" | "repeatDays">): Promise<CalendarEvent> {
   const updatedEvent = await apiRequest<ApiEvent>(`/api/events/${eventId}`, {
     method: "PATCH",
     body: JSON.stringify(toApiEventPayload(event)),
@@ -206,7 +208,7 @@ function fromApiTask(task: ApiTask): Task {
   return {
     id: String(task.task_id),
     name: task.name,
-    description: task.description ?? "",
+    description: task.description ?? undefined,
     taskGroupId: task.task_group_id === null ? undefined : String(task.task_group_id),
     dueDate: task.due_datetime ?? undefined,
     priority: task.priority ?? undefined,
@@ -242,18 +244,22 @@ function fromApiEvent(event: ApiEvent): CalendarEvent {
     date: event.start_datetime.slice(0, 10),
     startTime: event.start_datetime.slice(11, 16),
     endTime: event.finish_datetime.slice(11, 16),
+    repeatType: event.recurrence_type ?? "once",
+    repeatDays: event.recurrence_days ?? [],
     createdAt: event.created_at,
     updatedAt: event.created_at,
   };
 }
 
-function toApiEventPayload(event: Pick<CalendarEvent, "name" | "description" | "taskGroupId" | "date" | "startTime" | "endTime">) {
+function toApiEventPayload(event: Pick<CalendarEvent, "name" | "description" | "taskGroupId" | "date" | "startTime" | "endTime" | "repeatType" | "repeatDays">) {
   return {
     name: event.name,
     description: event.description,
     task_group_id: toOptionalNumber(event.taskGroupId),
     start_datetime: `${event.date}T${event.startTime}:00`,
     finish_datetime: `${event.date}T${event.endTime}:00`,
+    recurrence_type: event.repeatType,
+    recurrence_days: event.repeatType === "custom" ? event.repeatDays : [],
   };
 }
 

@@ -1,14 +1,14 @@
 import { Check, Plus } from "lucide-react";
 import type { FormEvent } from "react";
 import type { Task, TaskGroup } from "../types";
-import { toDateTimeInputValue } from "../utils/date";
+import { toDateInputValue, toTimeInputValue } from "../utils/date";
 
 export type TaskFormValues = {
   name: string;
-  description: string;
-  taskGroupId: string;
-  dueDate: string;
-  priority: number;
+  description?: string;
+  taskGroupId?: string;
+  dueDate?: string;
+  priority?: number;
 };
 
 type TaskFormProps = {
@@ -29,12 +29,17 @@ export function TaskForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const description = String(formData.get("description") ?? "").trim();
+    const taskGroupId = String(formData.get("taskGroupId") ?? "");
+    const dueDate = String(formData.get("dueDate") ?? "");
+    const dueTime = String(formData.get("dueTime") ?? "");
+    const priority = String(formData.get("priority") ?? "");
     const values: TaskFormValues = {
       name: String(formData.get("name") ?? "").trim(),
-      description: String(formData.get("description") ?? "").trim(),
-      taskGroupId: String(formData.get("taskGroupId") ?? ""),
-      dueDate: String(formData.get("dueDate") ?? ""),
-      priority: Number(formData.get("priority") ?? 3),
+      description: description || undefined,
+      taskGroupId: taskGroupId || undefined,
+      dueDate: dueDate ? `${dueDate}T${dueTime || "23:59"}:00` : undefined,
+      priority: priority ? Number(priority) : undefined,
     };
 
     if (!values.name) {
@@ -58,6 +63,7 @@ export function TaskForm({
             name="name"
             defaultValue={editingTask?.name}
             placeholder="What needs attention?"
+            required
             className="rounded-xl border border-theme-border bg-theme-background px-3 py-2 text-theme-text outline-none transition focus:border-theme-border-strong"
           />
         </label>
@@ -92,12 +98,22 @@ export function TaskForm({
 
           <label className="grid gap-1 text-sm font-medium text-theme-text-muted">
             Due date
-            <input
-              name="dueDate"
-              type="datetime-local"
-              defaultValue={toDateTimeInputValue(editingTask?.dueDate) || initialDueDate}
-              className="rounded-xl border border-theme-border bg-theme-background px-3 py-2 text-theme-text outline-none transition focus:border-theme-border-strong"
-            />
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(6.5rem,0.7fr)] overflow-hidden rounded-xl border border-theme-border bg-theme-background transition focus-within:border-theme-border-strong">
+              <input
+                name="dueDate"
+                type="date"
+                defaultValue={toDateInputValue(editingTask?.dueDate) || toDateInputValue(initialDueDate)}
+                className="min-w-0 bg-transparent px-3 py-2 text-theme-text outline-none"
+              />
+              <input
+                name="dueTime"
+                type="time"
+                defaultValue={toTimeInputValue(editingTask?.dueDate) || toTimeInputValue(initialDueDate)}
+                aria-label="Due time (optional; defaults to 11:59 PM)"
+                title="Optional; defaults to 11:59 PM"
+                className="min-w-0 border-l border-theme-border bg-transparent px-3 py-2 text-theme-text outline-none"
+              />
+            </div>
           </label>
         </div>
 
@@ -105,9 +121,10 @@ export function TaskForm({
           Priority
           <select
             name="priority"
-            defaultValue={editingTask?.priority ?? 3}
+            defaultValue={editingTask?.priority ?? ""}
             className="rounded-xl border border-theme-border bg-theme-background px-3 py-2 text-theme-text outline-none transition focus:border-theme-border-strong"
           >
+            <option value="">No priority</option>
             {[1, 2, 3, 4, 5].map((priority) => (
               <option key={priority} value={priority}>
                 {priority}
