@@ -27,6 +27,22 @@ def add_missing_columns():
         connection.execute(
             text(
                 """
+                ALTER TABLE events
+                ADD COLUMN IF NOT EXISTS recurrence_type VARCHAR NOT NULL DEFAULT 'once'
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                ALTER TABLE events
+                ADD COLUMN IF NOT EXISTS recurrence_days JSON NOT NULL DEFAULT '[]'
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
                 ALTER TABLE task_groups
                 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
                 """

@@ -430,7 +430,7 @@ function DailyCalendar({
     >
       {hours.map((hour) => {
         const hourTasks = tasks.filter((task) => datePart(task.dueDate) === dayKey && dueHour(task.dueDate) === hour);
-        const startingEvents = events.filter((event) => event.date === dayKey && eventHour(event.startTime) === hour);
+        const startingEvents = events.filter((event) => eventOccursOn(event, dayKey) && eventHour(event.startTime) === hour);
         const selected = isSelected(hour);
 
         return (
@@ -606,7 +606,7 @@ function WeeklyCalendar({
             {days.map((day) => {
               const dayKey = toDateKey(day);
               const hourTasks = tasks.filter((task) => datePart(task.dueDate) === dayKey && dueHour(task.dueDate) === hour);
-              const startingEvents = events.filter((event) => event.date === dayKey && eventHour(event.startTime) === hour);
+              const startingEvents = events.filter((event) => eventOccursOn(event, dayKey) && eventHour(event.startTime) === hour);
               const selected = isSelected(day, hour);
 
               return (
@@ -689,7 +689,12 @@ function MonthlyCalendar({
           const taskDate = datePart(task.dueDate);
           return taskDate >= startKey && taskDate <= endKey;
         });
-        const weekEvents = events.filter((event) => event.date >= startKey && event.date <= endKey);
+        const weekEvents = week.flatMap((day) => {
+          const occurrenceDate = toDateKey(day);
+          return events
+            .filter((event) => eventOccursOn(event, occurrenceDate))
+            .map((event) => ({ event, occurrenceDate }));
+        });
 
         return (
           <div key={startKey} className="grid min-h-28 grid-cols-[130px_minmax(0,1fr)] border-b border-theme-border last:border-b-0">
@@ -702,8 +707,14 @@ function MonthlyCalendar({
             <div className="grid content-start gap-2 overflow-y-auto p-3">
               {weekEvents.length || weekTasks.length ? (
                 <>
-                  {weekEvents.map((event) => (
-                    <CalendarMonthEventPill key={event.id} event={event} groups={groups} onEventMenu={onEventMenu} />
+                  {weekEvents.map(({ event, occurrenceDate }) => (
+                    <CalendarMonthEventPill
+                      key={`${event.id}-${occurrenceDate}`}
+                      event={event}
+                      occurrenceDate={occurrenceDate}
+                      groups={groups}
+                      onEventMenu={onEventMenu}
+                    />
                   ))}
                   {weekTasks.map((task) => (
                     <CalendarTaskPill key={task.id} task={task} groups={groups} onTaskMenu={onTaskMenu} />
@@ -722,10 +733,12 @@ function MonthlyCalendar({
 
 function CalendarMonthEventPill({
   event,
+  occurrenceDate,
   groups,
   onEventMenu,
 }: {
   event: CalendarEvent;
+  occurrenceDate: string;
   groups: TaskGroup[];
   onEventMenu: (event: CalendarEvent, x: number, y: number) => void;
 }) {
@@ -749,7 +762,7 @@ function CalendarMonthEventPill({
     >
       <Clock size={14} className="shrink-0" />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold">{event.name || "Event"}</span>
-      <span className="shrink-0 text-xs opacity-85">{shortDate(new Date(`${event.date}T00:00:00`))}</span>
+      <span className="shrink-0 text-xs opacity-85">{shortDate(new Date(`${occurrenceDate}T00:00:00`))}</span>
     </button>
   );
 }
@@ -974,6 +987,28 @@ function formatHour(hour: number) {
 
 function eventHour(value: string) {
   return Number(value.slice(0, 2));
+}
+
+function eventOccursOn(event: CalendarEvent, date: string) {
+  if (date < event.date) {
+    return false;
+  }
+
+  if (event.repeatType === "daily") {
+    return true;
+  }
+
+  const weekday = new Date(`${date}T00:00:00`).getDay();
+
+  if (event.repeatType === "weekdays") {
+    return weekday >= 1 && weekday <= 5;
+  }
+
+  if (event.repeatType === "custom") {
+    return event.repeatDays.includes(weekday);
+  }
+
+  return date === event.date;
 }
 
 function eventDurationHours(event: CalendarEvent) {

@@ -692,9 +692,9 @@ function App() {
       const taskUpdate = {
         name: values.name,
         description: values.description,
-        taskGroupId: values.taskGroupId || undefined,
-        dueDate: values.dueDate || undefined,
-        priority: values.priority || 3,
+        taskGroupId: values.taskGroupId,
+        dueDate: values.dueDate,
+        priority: values.priority,
         updatedAt: now,
       };
 
@@ -713,9 +713,9 @@ function App() {
       const createdTask = await createRemoteTask({
         name: values.name,
         description: values.description,
-        taskGroupId: values.taskGroupId || undefined,
-        dueDate: values.dueDate || undefined,
-        priority: values.priority || 3,
+        taskGroupId: values.taskGroupId,
+        dueDate: values.dueDate,
+        priority: values.priority,
       });
       setTasks((currentTasks) => [createdTask, ...currentTasks]);
       clearBackendFailure();
@@ -827,6 +827,8 @@ function App() {
         date: values.date,
         startTime: values.startTime,
         endTime: values.endTime,
+        repeatType: values.repeatType,
+        repeatDays: values.repeatDays,
         updatedAt: now,
       };
 
@@ -849,6 +851,8 @@ function App() {
         date: values.date,
         startTime: values.startTime,
         endTime: values.endTime,
+        repeatType: values.repeatType,
+        repeatDays: values.repeatDays,
       });
       setEvents((currentEvents) => [createdEvent, ...currentEvents]);
       clearBackendFailure();
@@ -907,6 +911,8 @@ function App() {
               date: event.date,
               startTime: event.startTime,
               endTime: event.endTime,
+              repeatType: event.repeatType,
+              repeatDays: event.repeatDays,
             }),
           ),
       ]);

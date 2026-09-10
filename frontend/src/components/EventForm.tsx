@@ -1,6 +1,6 @@
 import { Check, Plus } from "lucide-react";
-import type { FormEvent } from "react";
-import type { CalendarEvent, TaskGroup } from "../types";
+import { useState, type FormEvent } from "react";
+import type { CalendarEvent, EventRepeatType, TaskGroup } from "../types";
 
 export type EventFormValues = {
   name: string;
@@ -9,7 +9,19 @@ export type EventFormValues = {
   date: string;
   startTime: string;
   endTime: string;
+  repeatType: EventRepeatType;
+  repeatDays: number[];
 };
+
+const weekdays = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
 
 type EventFormProps = {
   groups: TaskGroup[];
@@ -19,6 +31,10 @@ type EventFormProps = {
 };
 
 export function EventForm({ groups, editingEvent, initialValues, onSubmit }: EventFormProps) {
+  const [repeatType, setRepeatType] = useState<EventRepeatType>(
+    editingEvent?.repeatType ?? initialValues?.repeatType ?? "once",
+  );
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -30,9 +46,18 @@ export function EventForm({ groups, editingEvent, initialValues, onSubmit }: Eve
       date: String(formData.get("date") ?? ""),
       startTime: String(formData.get("startTime") ?? ""),
       endTime: String(formData.get("endTime") ?? ""),
+      repeatType,
+      repeatDays: repeatType === "custom" ? formData.getAll("repeatDays").map(Number) : [],
     };
 
-    if (!values.name || !values.date || !values.startTime || !values.endTime || values.endTime <= values.startTime) {
+    if (
+      !values.name ||
+      !values.date ||
+      !values.startTime ||
+      !values.endTime ||
+      values.endTime <= values.startTime ||
+      (values.repeatType === "custom" && values.repeatDays.length === 0)
+    ) {
       return;
     }
 
@@ -116,6 +141,44 @@ export function EventForm({ groups, editingEvent, initialValues, onSubmit }: Eve
           />
         </label>
       </div>
+
+      <label className="grid gap-1 text-sm font-medium text-theme-text-muted">
+        Repetition
+        <select
+          name="repeatType"
+          value={repeatType}
+          onChange={(event) => setRepeatType(event.target.value as EventRepeatType)}
+          className="rounded-xl border border-theme-border bg-theme-background px-3 py-2 text-theme-text outline-none transition focus:border-theme-border-strong"
+        >
+          <option value="once">Once</option>
+          <option value="daily">Daily</option>
+          <option value="weekdays">Weekdays</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+
+      {repeatType === "custom" ? (
+        <fieldset className="rounded-xl border border-theme-border bg-theme-background p-3">
+          <legend className="px-1 text-sm font-medium text-theme-text-muted">Repeat on</legend>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            {weekdays.map((weekday) => (
+              <label
+                key={weekday.value}
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-2 py-2 text-xs text-theme-text-muted transition hover:border-theme-border-strong hover:text-theme-text"
+              >
+                <input
+                  type="checkbox"
+                  name="repeatDays"
+                  value={weekday.value}
+                  defaultChecked={editingEvent?.repeatDays.includes(weekday.value)}
+                  className="accent-theme-accent"
+                />
+                {weekday.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <button
         type="submit"
